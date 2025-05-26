@@ -1,5 +1,6 @@
 package co.quis.flutter_contacts
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentProviderOperation
 import android.content.ContentResolver
@@ -30,6 +31,7 @@ import android.provider.ContactsContract.RawContacts
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.Serializable
 import co.quis.flutter_contacts.properties.Account as PAccount
 import co.quis.flutter_contacts.properties.Address as PAddress
 import co.quis.flutter_contacts.properties.Email as PEmail
@@ -72,7 +74,7 @@ class FlutterContacts {
             if (!cursor.moveToNext()) {
                 return null
             }
-            fun getString(col: String): String = cursor.getString(cursor.getColumnIndex(col)) ?: ""
+            fun getString(col: String): String = cursor.getString(cursor.getColumnIndexOrThrow(col)) ?: ""
             val id = getString(Data.CONTACT_ID)
             cursor.close()
             return id
@@ -213,8 +215,8 @@ class FlutterContacts {
             // Maps contact ID to its index in `contacts`.
             var index = mutableMapOf<String, Int>()
 
-            fun getString(col: String): String = cursor.getString(cursor.getColumnIndex(col)) ?: ""
-            fun getInt(col: String): Int = cursor.getInt(cursor.getColumnIndex(col)) ?: 0
+            fun getString(col: String): String = cursor.getString(cursor.getColumnIndexOrThrow(col)) ?: ""
+            fun getInt(col: String): Int = cursor.getInt(cursor.getColumnIndexOrThrow(col).runCatching { toInt() }.getOrDefault(0))
             fun getBool(col: String): Boolean = getInt(col) == 1
 
             while (cursor.moveToNext()) {
@@ -252,7 +254,7 @@ class FlutterContacts {
 
                 // Thumbnails.
                 if (withThumbnail && mimetype == Photo.CONTENT_ITEM_TYPE) {
-                    contact.thumbnail = cursor.getBlob(cursor.getColumnIndex(Photo.PHOTO))
+                    contact.thumbnail = cursor.getBlob(cursor.getColumnIndexOrThrow(Photo.PHOTO))
                 }
 
                 // All properties (phones, emails, etc).
@@ -775,9 +777,9 @@ class FlutterContacts {
             while (cursor.moveToNext()) {
                 contacts.add(
                     Contact(
-                        /*id=*/(cursor.getString(cursor.getColumnIndex(Contacts._ID)) ?: ""),
-                        /*displayName=*/(cursor.getString(cursor.getColumnIndex(Contacts.DISPLAY_NAME_PRIMARY)) ?: ""),
-                        isStarred = (cursor.getInt(cursor.getColumnIndex(Contacts.DISPLAY_NAME_PRIMARY)) ?: 0) == 0
+                        /*id=*/(cursor.getString(cursor.getColumnIndexOrThrow(Contacts._ID)) ?: ""),
+                        /*displayName=*/(cursor.getString(cursor.getColumnIndexOrThrow(Contacts.DISPLAY_NAME_PRIMARY)) ?: ""),
+                        isStarred = (cursor.getInt(cursor.getColumnIndexOrThrow(Contacts.DISPLAY_NAME_PRIMARY)) ?: 0) == 0
                     )
                 )
             }
@@ -787,7 +789,7 @@ class FlutterContacts {
         }
 
         private fun getPhoneLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(Phone.TYPE))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(Phone.TYPE))
             return when (type) {
                 Phone.TYPE_ASSISTANT -> "assistant"
                 Phone.TYPE_CALLBACK -> "callback"
@@ -831,15 +833,15 @@ class FlutterContacts {
             }
             var groups = mutableMapOf<String, PGroup>()
             while (cursor.moveToNext()) {
-                val groupId = cursor.getString(cursor.getColumnIndex(Groups._ID)) ?: ""
-                val groupName = cursor.getString(cursor.getColumnIndex(Groups.TITLE)) ?: ""
+                val groupId = cursor.getString(cursor.getColumnIndexOrThrow(Groups._ID)) ?: ""
+                val groupName = cursor.getString(cursor.getColumnIndexOrThrow(Groups.TITLE)) ?: ""
                 groups[groupId] = PGroup(id = groupId, name = groupName)
             }
             return groups
         }
 
         private fun getPhoneCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(Phone.LABEL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(Phone.LABEL)) ?: ""
         }
 
         private data class PhoneLabelPair(val label: Int, val customLabel: String)
@@ -871,7 +873,7 @@ class FlutterContacts {
         }
 
         private fun getEmailLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(Email.TYPE))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(Email.TYPE))
             return when (type) {
                 Email.TYPE_CUSTOM -> "custom"
                 Email.TYPE_HOME -> "home"
@@ -883,7 +885,7 @@ class FlutterContacts {
         }
 
         private fun getEmailCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(Email.LABEL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(Email.LABEL)) ?: ""
         }
 
         private data class EmailLabelPair(val label: Int, val customLabel: String)
@@ -899,7 +901,7 @@ class FlutterContacts {
         }
 
         private fun getAddressLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(StructuredPostal.TYPE))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(StructuredPostal.TYPE))
             return when (type) {
                 StructuredPostal.TYPE_HOME -> "home"
                 StructuredPostal.TYPE_OTHER -> "other"
@@ -910,7 +912,7 @@ class FlutterContacts {
         }
 
         private fun getAddressCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(StructuredPostal.LABEL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(StructuredPostal.LABEL)) ?: ""
         }
 
         private data class AddressLabelPair(val label: Int, val customLabel: String)
@@ -925,7 +927,7 @@ class FlutterContacts {
         }
 
         private fun getWebsiteLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(Website.TYPE))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(Website.TYPE))
             return when (type) {
                 Website.TYPE_BLOG -> "blog"
                 Website.TYPE_FTP -> "ftp"
@@ -940,7 +942,7 @@ class FlutterContacts {
         }
 
         private fun getWebsiteCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(Website.LABEL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(Website.LABEL)) ?: ""
         }
 
         private data class WebsiteLabelPair(val label: Int, val customLabel: String)
@@ -959,7 +961,7 @@ class FlutterContacts {
         }
 
         private fun getSocialMediaLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(Im.PROTOCOL))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(Im.PROTOCOL))
             return when (type) {
                 Im.PROTOCOL_AIM -> "aim"
                 Im.PROTOCOL_GOOGLE_TALK -> "googleTalk"
@@ -976,7 +978,7 @@ class FlutterContacts {
         }
 
         private fun getSocialMediaCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(Im.CUSTOM_PROTOCOL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(Im.CUSTOM_PROTOCOL)) ?: ""
         }
 
         private data class SocialMediaLabelPair(val label: Int, val customLabel: String)
@@ -997,7 +999,7 @@ class FlutterContacts {
         }
 
         private fun getEventLabel(cursor: Cursor): String {
-            val type = cursor.getInt(cursor.getColumnIndex(Event.TYPE))
+            val type = cursor.getInt(cursor.getColumnIndexOrThrow(Event.TYPE))
             return when (type) {
                 Event.TYPE_ANNIVERSARY -> "anniversary"
                 Event.TYPE_BIRTHDAY -> "birthday"
@@ -1008,7 +1010,7 @@ class FlutterContacts {
         }
 
         private fun getEventCustomLabel(cursor: Cursor): String {
-            return cursor.getString(cursor.getColumnIndex(Event.LABEL)) ?: ""
+            return cursor.getString(cursor.getColumnIndexOrThrow(Event.LABEL)) ?: ""
         }
 
         private data class EventLabelPair(val label: Int, val customLabel: String)
